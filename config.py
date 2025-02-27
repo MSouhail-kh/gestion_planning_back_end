@@ -10,7 +10,7 @@ class Config:
 
     # File upload configuration
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER')
-    ALLOWED_EXTENSIONS = set(os.getenv('ALLOWED_EXTENSIONS').split(','))
+    ALLOWED_EXTENSIONS = set(os.getenv('ALLOWED_EXTENSIONS', 'png,jpg,jpeg,pdf,xls,xlsx').split(','))
 
     # Flask secret key
     SECRET_KEY = os.getenv('SECRET_KEY')
