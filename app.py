@@ -11,7 +11,9 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 db.init_app(app)
+
 migrate = Migrate(app, db)
+
 CORS(app, supports_credentials=True, origins="http://localhost:5173")
 
 mail = Mail(app)
