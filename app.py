@@ -12,7 +12,10 @@ app.config.from_object(Config)
 
 db.init_app(app)
 migrate = Migrate(app, db)
-CORS(app, supports_credentials=True, origins="https://gestionplanning-git-gestion-planning-msouhail-khs-projects.vercel.app")
+
+# Allow all origins
+CORS(app, supports_credentials=True, origins="*")
+
 mail = Mail(app)
 
 app.register_blueprint(main_blueprint)
