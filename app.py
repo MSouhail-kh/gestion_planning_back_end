@@ -12,7 +12,7 @@ app.config.from_object(Config)
 
 db.init_app(app)
 migrate = Migrate(app, db)
-CORS(app, supports_credentials=True, origins="http://localhost:5173")
+CORS(app, supports_credentials=True, origins="https://gestion-planning-wheat.vercel.app/")
 mail = Mail(app)
 
 app.register_blueprint(main_blueprint)
