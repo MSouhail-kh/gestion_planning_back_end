@@ -307,10 +307,12 @@ def get_produits_by_position_id(produit_id):
 
         return jsonify(produits_list)
 
+
 @main.route('/static/uploads/<filename>')
 def serve_file(filename):
-            return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
-
+    safe_filename = secure_filename(filename)
+    return send_from_directory(current_app.config["UPLOAD_FOLDER"], safe_filename)
+    
 @main.route('/ajouter/produits', methods=['POST'])
 def add_produit():
                 style = request.form.get('style')
