@@ -18,7 +18,7 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 # Allow all origins
-CORS(app, supports_credentials=True, origins="*")
+CORS(app, supports_credentials=True, origins="https://gestion-planning-git-gestion-planning-msouhail-khs-projects.vercel.app")
 
 mail = Mail(app)
 
