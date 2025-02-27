@@ -45,7 +45,7 @@ def token_required(f):
     def decorated(*args, **kwargs):
         if request.method == "OPTIONS":
             response = make_response()
-            response.headers.add('Access-Control-Allow-Origin', 'http://localhost:5173')
+            response.headers.add('Access-Control-Allow-Origin', 'https://gestion-planning-wheat.vercel.app/')
             response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
             response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
             response.headers.add('Access-Control-Allow-Credentials', 'true')
@@ -73,11 +73,11 @@ def token_required(f):
     return decorated
 
 @main.route('/login', methods=['POST', 'OPTIONS'])
-@cross_origin(origin='http://localhost:5173', supports_credentials=True)
+@cross_origin(origin='https://gestion-planning-wheat.vercel.app/', supports_credentials=True)
 def login():
     if request.method == 'OPTIONS':
         response = jsonify({'message': 'Preflight request handled'})
-        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:5173')
+        response.headers.add('Access-Control-Allow-Origin', 'https://gestion-planning-wheat.vercel.app/')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
@@ -99,11 +99,11 @@ def login():
     return jsonify({'token': token}), 200
 
 @main.route('/signup', methods=['POST', 'OPTIONS'])
-@cross_origin(origin='http://localhost:5173', supports_credentials=True)
+@cross_origin(origin='https://gestion-planning-wheat.vercel.app/', supports_credentials=True)
 def signup():
     if request.method == 'OPTIONS':
         response = jsonify({'message': 'Preflight request handled'})
-        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:5173')
+        response.headers.add('Access-Control-Allow-Origin', 'https://gestion-planning-wheat.vercel.app/')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
         response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
@@ -132,7 +132,7 @@ def signup():
     return response, 201
 
 @main.route('/user', methods=['GET', 'OPTIONS'])
-@cross_origin(origin='http://localhost:5173', supports_credentials=True)
+@cross_origin(origin='https://gestion-planning-wheat.vercel.app/', supports_credentials=True)
 @token_required
 def get_user(current_user_email):
     user = User.query.filter_by(email=current_user_email).first()
@@ -150,7 +150,7 @@ def get_user(current_user_email):
 
 @main.route('/produits', methods=['GET'])
 def get_produits():
-        BASE_URL = "http://localhost:5173"
+        BASE_URL = "https://gestion-planning-wheat.vercel.app/"
         produits = Produit.query.all()
         produits_dict = {
             produit.id: {
@@ -177,31 +177,9 @@ def get_produits():
         }
         return jsonify(produits_dict)
 
-@main.route('/api/forgot-password', methods=['POST'])
-def forgot_password():
-    data = request.get_json()
-    email = data.get('email')
-
-    if not email:
-        return jsonify({'message': 'Adresse e-mail requise'}), 400
-
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({'message': 'Si cet e-mail est enregistré, vous recevrez un email'}), 200
-
-    reset_token = User.generate_reset_token()
-    user.reset_token = reset_token
-    db.session.commit()
-
-    reset_link = f"http://localhost:3000/reset-password/{user.id}?token={reset_token}"
-    
-    send_reset_email(email, reset_link)
-
-    return jsonify({'message': 'Un email a été envoyé avec un lien de réinitialisation'}), 200
-
 @main.route('/produits/<int:produit_id>', methods=['GET'])
 def get_produit_by_id(produit_id):
-        BASE_URL = "http://localhost:5173"
+        BASE_URL = "https://gestion-planning-wheat.vercel.app/"
         produit = Produit.query.get(produit_id)
         if not produit:
             return jsonify({'error': 'Produit non trouvé'}), 404
@@ -307,7 +285,7 @@ def update_produit(produit_id):
 
 @main.route('/produits/position/<int:produit_id>', methods=['GET'])
 def get_produits_by_position_id(produit_id):
-        BASE_URL = "http://localhost:5173"
+        BASE_URL = "https://gestion-planning-wheat.vercel.app/"
         produit = Produit.query.get(produit_id)
         if not produit:
             return jsonify({'error': 'Produit non trouvé'}), 404
@@ -593,7 +571,7 @@ def supprimer_tous_les_produits():
 def handle_drag():
     if request.method == "OPTIONS":
         response = jsonify({'message': 'Options preflight request passed'})
-        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:5173')
+        response.headers.add('Access-Control-Allow-Origin', 'https://gestion-planning-wheat.vercel.app/')
         response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         response.status_code = 200
