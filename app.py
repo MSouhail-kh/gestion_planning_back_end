@@ -1,7 +1,7 @@
 from flask import Flask
 import os
 from config import Config
-from models import db
+from models import db, Position  # Import de Position pour l'insertion automatique
 from flask_migrate import Migrate
 from flask_cors import CORS
 from pythocode import main as main_blueprint
@@ -11,14 +11,22 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 db.init_app(app)
-
 migrate = Migrate(app, db)
-
 CORS(app, supports_credentials=True, origins="http://localhost:5173")
-
 mail = Mail(app)
 
 app.register_blueprint(main_blueprint)
+
+# Création des tables et insertion automatique des positions
+with app.app_context():
+    db.create_all()
+
+    # Vérifier si les données existent déjà pour éviter les doublons
+    if Position.query.count() == 0:
+        positions = [Position(id=i, name=f"Chaîne {i}") for i in range(1, 7)]
+        db.session.add_all(positions)
+        db.session.commit()
+        print("✅ Données Position insérées avec succès !")
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=8080)
