@@ -150,7 +150,7 @@ def get_user(current_user_email):
 
 @main.route('/produits', methods=['GET'])
 def get_produits():
-        BASE_URL = "*"
+        BASE_URL = "https://gestion-planning-git-gestion-planning-msouhail-khs-projects.vercel.app/"
         produits = Produit.query.all()
         produits_dict = {
             produit.id: {
@@ -179,7 +179,7 @@ def get_produits():
 
 @main.route('/produits/<int:produit_id>', methods=['GET'])
 def get_produit_by_id(produit_id):
-        BASE_URL = "*"
+        BASE_URL = "https://gestion-planning-git-gestion-planning-msouhail-khs-projects.vercel.app"
         produit = Produit.query.get(produit_id)
         if not produit:
             return jsonify({'error': 'Produit non trouvé'}), 404
@@ -285,7 +285,7 @@ def update_produit(produit_id):
 
 @main.route('/produits/position/<int:produit_id>', methods=['GET'])
 def get_produits_by_position_id(produit_id):
-        BASE_URL = "*"
+        BASE_URL = "https://gestion-planning-git-gestion-planning-msouhail-khs-projects.vercel.app"
         produit = Produit.query.get(produit_id)
         if not produit:
             return jsonify({'error': 'Produit non trouvé'}), 404
