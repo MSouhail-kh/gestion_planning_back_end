@@ -307,13 +307,12 @@ def get_produits_by_position_id(produit_id):
 
         return jsonify(produits_list)
 
-os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
 def allowed_file(filename):
     """Check if the file extension is allowed."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
+
 def save_uploaded_file(file, upload_folder=None):
-    """Save an uploaded file to the specified folder."""
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         folder = upload_folder if upload_folder else current_app.config['UPLOAD_FOLDER']
@@ -325,9 +324,9 @@ def save_uploaded_file(file, upload_folder=None):
 
 @main.route('/assets/<filename>')
 def serve_file(filename):
-    """Serve uploaded files."""
-    return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
-
+    safe_filename = secure_filename(filename)
+    return send_from_directory(current_app.config["UPLOAD_FOLDER"], safe_filename)
+    
 @main.route('/ajouter/produits', methods=['POST'])
 def add_produit():
     """Add a new product to the database."""
@@ -357,7 +356,6 @@ def add_produit():
         except ValueError:
             return jsonify({'message': 'La quantité doit être un nombre valide'}), 400
 
-        # Save uploaded files
         def get_uploaded_file(field_name):
             file = request.files.get(field_name)
             return save_uploaded_file(file) if file else None
