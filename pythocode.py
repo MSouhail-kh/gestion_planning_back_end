@@ -23,7 +23,7 @@ def send_reset_email(email, reset_link):
 main = Blueprint('main', __name__)
 CORS(main, supports_credentials=True)
 
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
