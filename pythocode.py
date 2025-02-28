@@ -156,12 +156,12 @@ def get_produits():
         produit.id: {
             'id': produit.id,
             'style': produit.style,
-            'image': f"{BASE_URL}/static/uploads/{produit.image}" if produit.image else None,
+            'image': f"{BASE_URL}/assets/{produit.image}" if produit.image else None,
             'qty': produit.qty,
-            'dossier_technique': f"{BASE_URL}/static/uploads/{produit.dossier_technique}" if produit.dossier_technique else None,
-            'dossier_serigraphie': f"{BASE_URL}/static/uploads/{produit.dossier_serigraphie}" if produit.dossier_serigraphie else None,
-            'bon_de_commande': f"{BASE_URL}/static/uploads/{produit.bon_de_commande}" if produit.bon_de_commande else None,
-            'patronage': f"{BASE_URL}/static/uploads/{produit.patronage}" if produit.patronage else None,
+            'dossier_technique': f"{BASE_URL}/assets/{produit.dossier_technique}" if produit.dossier_technique else None,
+            'dossier_serigraphie': f"{BASE_URL}/assets/{produit.dossier_serigraphie}" if produit.dossier_serigraphie else None,
+            'bon_de_commande': f"{BASE_URL}/assets/{produit.bon_de_commande}" if produit.bon_de_commande else None,
+            'patronage': f"{BASE_URL}/assets/{produit.patronage}" if produit.patronage else None,
             'date_reception_bon_commande': produit.date_reception_bon_commande,
             'date_livraison_commande': produit.date_livraison_commande,
             'position_id': produit.position_id,
@@ -186,12 +186,12 @@ def get_produit_by_id(produit_id):
         produit_dict = {
             'id': produit.id,
             'style': produit.style,
-            'image': f"{BASE_URL}/assets/uploads/{produit.image}" if produit.image else None,
+            'image': f"{BASE_URL}/assets/{produit.image}" if produit.image else None,
             'qty': produit.qty,
-            'dossier_technique': f"{BASE_URL}/assets/uploads/{produit.dossier_technique}" if produit.dossier_technique else None,
-            'dossier_serigraphie': f"{BASE_URL}/assets/uploads/{produit.dossier_serigraphie}" if produit.dossier_serigraphie else None,
-            'bon_de_commande': f"{BASE_URL}/assets/uploads/{produit.bon_de_commande}" if produit.bon_de_commande else None,
-            'patronage': f"{BASE_URL}/assets/uploads/{produit.patronage}" if produit.patronage else None,
+            'dossier_technique': f"{BASE_URL}/assets/{produit.dossier_technique}" if produit.dossier_technique else None,
+            'dossier_serigraphie': f"{BASE_URL}/assets/{produit.dossier_serigraphie}" if produit.dossier_serigraphie else None,
+            'bon_de_commande': f"{BASE_URL}/assets/{produit.bon_de_commande}" if produit.bon_de_commande else None,
+            'patronage': f"{BASE_URL}/assets/{produit.patronage}" if produit.patronage else None,
             'date_reception_bon_commande': produit.date_reception_bon_commande,
             'date_livraison_commande': produit.date_livraison_commande,
             'position_id': produit.position_id,
@@ -300,7 +300,7 @@ def get_produits_by_position_id(produit_id):
             produit_dict = {
                 'id': produit.id,
                 'style': produit.style,
-                'image': f"{BASE_URL}/assets/uploads/{produit.image}" if produit.image else None,
+                'image': f"{BASE_URL}/assets/{produit.image}" if produit.image else None,
                 'position_id': produit.position_id
             }
             produits_list.append(produit_dict)
