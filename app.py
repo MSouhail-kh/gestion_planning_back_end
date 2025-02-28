@@ -16,13 +16,13 @@ migrate = Migrate(app, db)
 CORS(app, supports_credentials=True, origins="https://gestion-planning-git-gestion-planning-msouhail-khs-projects.vercel.app")
 mail = Mail(app)
 
-# Ensure upload folder exists
-with app.app_context():
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    db.create_all()
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+@app.before_first_request
+def initialize_database():
     if Position.query.count() == 0:
         positions = [Position(id=i, name=f"Chaîne {i}") for i in range(1, 7)]
-        db.session.add_all(positions)
+        db.session.bulk_save_objects(positions)
         db.session.commit()
         print("✅ Données Position insérées avec succès !")
 
