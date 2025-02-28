@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 import pandas as pd
 import os
+from app import app, mail
 from models import db, Produit,User
 import uuid
 mail = Mail()
