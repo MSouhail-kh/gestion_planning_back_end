@@ -10,9 +10,7 @@ from flask_mail import Mail
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# # Ensure the upload folder exists
-# if not os.path.exists(app.config["UPLOAD_FOLDER"]):
-#     os.makedirs(app.config["UPLOAD_FOLDER"])
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 db.init_app(app)
 migrate = Migrate(app, db)
