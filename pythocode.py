@@ -9,6 +9,17 @@ import pandas as pd
 import os
 from models import db, Produit,User
 import uuid
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
+cloudinary.config(
+    cloud_name="dch1zqeid",
+    api_key="832779739236957",
+    api_secret="1lEut03YPYDu8BFtLQ1Q-olNm1Q",
+    secure=True
+)
+
 mail = Mail()
 
 def send_reset_email(email, reset_link):
@@ -148,20 +159,20 @@ def get_user(current_user_email):
     response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response, 200
     
+
 @main.route('/produits', methods=['GET'])
 def get_produits():
-    BASE_URL = "https://gestion-planning-git-gestion-planning-msouhail-khs-projects.vercel.app"
     produits = Produit.query.all()
     produits_dict = {
         produit.id: {
             'id': produit.id,
             'style': produit.style,
-            'image': f"{BASE_URL}/assets/{produit.image}" if produit.image else None,
+            'image': produit.image if produit.image else None,
             'qty': produit.qty,
-            'dossier_technique': f"{BASE_URL}/assets/{produit.dossier_technique}" if produit.dossier_technique else None,
-            'dossier_serigraphie': f"{BASE_URL}/assets/{produit.dossier_serigraphie}" if produit.dossier_serigraphie else None,
-            'bon_de_commande': f"{BASE_URL}/assets/{produit.bon_de_commande}" if produit.bon_de_commande else None,
-            'patronage': f"{BASE_URL}/assets/{produit.patronage}" if produit.patronage else None,
+            'dossier_technique': produit.dossier_technique if produit.dossier_technique else None,
+            'dossier_serigraphie': produit.dossier_serigraphie if produit.dossier_serigraphie else None,
+            'bon_de_commande': produit.bon_de_commande if produit.bon_de_commande else None,
+            'patronage': produit.patronage if produit.patronage else None,
             'date_reception_bon_commande': produit.date_reception_bon_commande,
             'date_livraison_commande': produit.date_livraison_commande,
             'position_id': produit.position_id,
@@ -176,6 +187,7 @@ def get_produits():
         for produit in produits
     }
     return jsonify(produits_dict)
+
 
 @main.route('/produits/<int:produit_id>', methods=['GET'])
 def get_produit_by_id(produit_id):
@@ -308,30 +320,17 @@ def get_produits_by_position_id(produit_id):
         return jsonify(produits_list)
 
 def allowed_file(filename):
-    """Check if the file extension is allowed."""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'pdf', 'xls', 'xlsx'}
 
-
-def save_uploaded_file(file, upload_folder=None):
+def upload_to_cloudinary(file):
     if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        folder = upload_folder if upload_folder else current_app.config['UPLOAD_FOLDER']
-        os.makedirs(folder, exist_ok=True)
-        file_path = os.path.join(folder, filename)
-        file.save(file_path)
-        return filename
+        upload_result = cloudinary.uploader.upload(file)
+        return upload_result.get("secure_url")  
     return None
 
-@main.route('/assets/<filename>')
-def serve_file(filename):
-    safe_filename = secure_filename(filename)
-    return send_from_directory(current_app.config["UPLOAD_FOLDER"], safe_filename)
-    
 @main.route('/ajouter/produits', methods=['POST'])
 def add_produit():
-    """Add a new product to the database."""
     try:
-        # Parse form data
         style = request.form.get('style', '')
         qty = request.form.get('qty', '')
         date_reception_bon_commande = request.form.get('date_reception_bon_commande')
@@ -345,12 +344,6 @@ def add_produit():
         reference = request.form.get('reference', '')
         type_de_produit = request.form.get('type_de_produit', '')
 
-        # Check for missing fields
-        missing_fields = [field for field in ['style', 'qty', 'position_id', 'po', 'coloris', 'brand', 
-                                             'type_de_commande', 'etat_de_commande', 'reference', 'type_de_produit']
-                         if not request.form.get(field)]
-
-        # Convert qty to float if possible
         try:
             qty = float(qty) if qty else None
         except ValueError:
@@ -358,23 +351,22 @@ def add_produit():
 
         def get_uploaded_file(field_name):
             file = request.files.get(field_name)
-            return save_uploaded_file(file) if file else None
+            return upload_to_cloudinary(file) if file else None
 
-        image_filename = get_uploaded_file('image')
-        dossier_filename = get_uploaded_file('dossier_technique')
-        dossier_serigraphie_filename = get_uploaded_file('dossier_serigraphie')
-        bon_de_commande_filename = get_uploaded_file('bon_de_commande')
-        patronage_filename = get_uploaded_file('patronage')
+        image_url = get_uploaded_file('image')
+        dossier_url = get_uploaded_file('dossier_technique')
+        dossier_serigraphie_url = get_uploaded_file('dossier_serigraphie')
+        bon_de_commande_url = get_uploaded_file('bon_de_commande')
+        patronage_url = get_uploaded_file('patronage')
 
-        # Create new product
         nouveau_produit = Produit(
             style=style,
-            image=image_filename,
+            image=image_url,
             qty=qty,
-            dossier_technique=dossier_filename,
-            dossier_serigraphie=dossier_serigraphie_filename,
-            bon_de_commande=bon_de_commande_filename,
-            patronage=patronage_filename,
+            dossier_technique=dossier_url,
+            dossier_serigraphie=dossier_serigraphie_url,
+            bon_de_commande=bon_de_commande_url,
+            patronage=patronage_url,
             date_reception_bon_commande=date_reception_bon_commande,
             date_livraison_commande=date_livraison_commande,
             position_id=position_id,
@@ -387,15 +379,10 @@ def add_produit():
             type_de_produit=type_de_produit
         )
 
-        # Save to database
         db.session.add(nouveau_produit)
         db.session.commit()
 
-        message = 'Produit ajouté avec succès'
-        if missing_fields:
-            message += f" (Attention : les champs {', '.join(missing_fields)} sont vides)"
-
-        return jsonify({'message': message}), 201
+        return jsonify({'message': 'Produit ajouté avec succès', 'produit': nouveau_produit.id}), 201
 
     except Exception as e:
         db.session.rollback()
