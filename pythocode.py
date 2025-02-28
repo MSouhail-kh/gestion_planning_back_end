@@ -7,7 +7,6 @@ from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 import pandas as pd
 import os
-from app import app, mail
 from models import db, Produit,User
 import uuid
 mail = Mail()
@@ -25,7 +24,6 @@ main = Blueprint('main', __name__)
 CORS(main, supports_credentials=True)
 
 os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
