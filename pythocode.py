@@ -325,11 +325,11 @@ def save_uploaded_file(file, upload_folder=None):
         return filename
     return None
 
-@app.route('/assets/<filename>')
+@main.route('/assets/<filename>')
 def serve_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-@app.route('/ajouter/produits', methods=['POST'])
+@main.route('/ajouter/produits', methods=['POST'])
 def add_produit():
     """Add a new product to the database."""
     try:
