@@ -307,6 +307,10 @@ def get_produits_by_position_id(produit_id):
 
         return jsonify(produits_list)
 
+UPLOAD_FOLDER = os.path.abspath(os.path.join(os.getcwd(), "assets"))
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
 def allowed_file(filename):
     """Check if the file extension is allowed."""
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx'}
@@ -316,56 +320,49 @@ def save_uploaded_file(file, upload_folder=None):
     """Save an uploaded file to the specified folder."""
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        folder = upload_folder if upload_folder else os.path.join("static", "uploads")
+        folder = upload_folder if upload_folder else UPLOAD_FOLDER
         os.makedirs(folder, exist_ok=True)
         file_path = os.path.join(folder, filename)
         file.save(file_path)
         return filename
     return None
 
-@main.route('/static/uploads/<filename>')
+@app.route('/assets/<filename>')
 def serve_file(filename):
-    """Serve uploaded files securely."""
-    upload_folder = os.path.abspath(os.path.join("static", "uploads"))
-    return send_from_directory(upload_folder, filename)
-    
-@main.route('/ajouter/produits', methods=['POST'])
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+@app.route('/ajouter/produits', methods=['POST'])
 def add_produit():
     """Add a new product to the database."""
     try:
-        # Validate required fields
-        required_fields = ['style', 'qty', 'position_id', 'po', 'coloris', 'brand', 'type_de_commande', 'etat_de_commande', 'reference', 'type_de_produit']
-        for field in required_fields:
-            if not request.form.get(field):
-                return jsonify({'message': f'Le champ {field} est requis'}), 400
-
         # Parse form data
-        style = request.form.get('style')
-        qty = request.form.get('qty')
+        style = request.form.get('style', '')
+        qty = request.form.get('qty', '')
         date_reception_bon_commande = request.form.get('date_reception_bon_commande')
         date_livraison_commande = request.form.get('date_livraison_commande')
-        position_id = request.form.get('position_id')
-        po = request.form.get('po')
-        coloris = request.form.get('coloris')
-        brand = request.form.get('brand')
-        type_de_commande = request.form.get('type_de_commande')
-        etat_de_commande = request.form.get('etat_de_commande')
-        reference = request.form.get('reference')
-        type_de_produit = request.form.get('type_de_produit')
+        position_id = request.form.get('position_id', '')
+        po = request.form.get('po', '')
+        coloris = request.form.get('coloris', '')
+        brand = request.form.get('brand', '')
+        type_de_commande = request.form.get('type_de_commande', '')
+        etat_de_commande = request.form.get('etat_de_commande', '')
+        reference = request.form.get('reference', '')
+        type_de_produit = request.form.get('type_de_produit', '')
 
-        # Convert qty to float
+        # Vérifier les champs vides sans bloquer
+        missing_fields = [field for field in ['style', 'qty', 'position_id', 'po', 'coloris', 'brand', 
+                                              'type_de_commande', 'etat_de_commande', 'reference', 'type_de_produit']
+                          if not request.form.get(field)]
+
+        # Convert qty to float if possible
         try:
             qty = float(qty) if qty else None
         except ValueError:
             return jsonify({'message': 'La quantité doit être un nombre valide'}), 400
 
-        # Handle file uploads
-        upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-        os.makedirs(upload_folder, exist_ok=True)
-
         def get_uploaded_file(field_name):
             file = request.files.get(field_name)
-            return save_uploaded_file(file, upload_folder) if file else None
+            return save_uploaded_file(file, UPLOAD_FOLDER) if file else None
 
         image_filename = get_uploaded_file('image')
         dossier_filename = get_uploaded_file('dossier_technique')
@@ -398,7 +395,11 @@ def add_produit():
         db.session.add(nouveau_produit)
         db.session.commit()
 
-        return jsonify({'message': 'Produit ajouté avec succès'}), 201
+        message = 'Produit ajouté avec succès'
+        if missing_fields:
+            message += f" (Attention : les champs {', '.join(missing_fields)} sont vides)"
+
+        return jsonify({'message': message}), 201
 
     except Exception as e:
         db.session.rollback()
