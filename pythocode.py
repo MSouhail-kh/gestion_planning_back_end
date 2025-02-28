@@ -23,6 +23,8 @@ def send_reset_email(email, reset_link):
 main = Blueprint('main', __name__)
 CORS(main, supports_credentials=True)
 
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
@@ -311,14 +313,13 @@ def get_produits_by_position_id(produit_id):
 
 def allowed_file(filename):
     """Check if the file extension is allowed."""
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx'}
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 def save_uploaded_file(file, upload_folder=None):
     """Save an uploaded file to the specified folder."""
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        folder = upload_folder if upload_folder else UPLOAD_FOLDER
+        folder = upload_folder if upload_folder else app.config['UPLOAD_FOLDER']
         os.makedirs(folder, exist_ok=True)
         file_path = os.path.join(folder, filename)
         file.save(file_path)
@@ -327,7 +328,8 @@ def save_uploaded_file(file, upload_folder=None):
 
 @main.route('/assets/<filename>')
 def serve_file(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    """Serve uploaded files."""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @main.route('/ajouter/produits', methods=['POST'])
 def add_produit():
@@ -347,10 +349,10 @@ def add_produit():
         reference = request.form.get('reference', '')
         type_de_produit = request.form.get('type_de_produit', '')
 
-        # Vérifier les champs vides sans bloquer
+        # Check for missing fields
         missing_fields = [field for field in ['style', 'qty', 'position_id', 'po', 'coloris', 'brand', 
-                                              'type_de_commande', 'etat_de_commande', 'reference', 'type_de_produit']
-                          if not request.form.get(field)]
+                                             'type_de_commande', 'etat_de_commande', 'reference', 'type_de_produit']
+                         if not request.form.get(field)]
 
         # Convert qty to float if possible
         try:
@@ -358,9 +360,10 @@ def add_produit():
         except ValueError:
             return jsonify({'message': 'La quantité doit être un nombre valide'}), 400
 
+        # Save uploaded files
         def get_uploaded_file(field_name):
             file = request.files.get(field_name)
-            return save_uploaded_file(file, UPLOAD_FOLDER) if file else None
+            return save_uploaded_file(file) if file else None
 
         image_filename = get_uploaded_file('image')
         dossier_filename = get_uploaded_file('dossier_technique')
