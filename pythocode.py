@@ -308,90 +308,86 @@ def get_produits_by_position_id(produit_id):
         return jsonify(produits_list)
 
 
+def allowed_file(filename):
+    """ Vérifie si le fichier a une extension autorisée. """
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_uploaded_file(file, upload_folder):
+    """ Enregistre un fichier téléchargé et retourne son nom sécurisé. """
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(upload_folder, filename)
+        file.save(file_path)
+        return filename
+    return None
+
 @main.route('/static/uploads/<filename>')
 def serve_file(filename):
+    """ Sert un fichier statique depuis le dossier d'uploads. """
     safe_filename = secure_filename(filename)
     return send_from_directory(current_app.config["UPLOAD_FOLDER"], safe_filename)
-    
+
 @main.route('/ajouter/produits', methods=['POST'])
 def add_produit():
-                style = request.form.get('style')
-                qty = request.form.get('qty')
-                date_reception_bon_commande = request.form.get('date_reception_bon_commande')
-                date_livraison_commande = request.form.get('date_livraison_commande')
-                position_id = request.form.get('position_id')
-                po = request.form.get('po')
-                coloris = request.form.get('coloris')
-                brand = request.form.get('brand')
-                type_de_commande = request.form.get('type_de_commande')
-                etat_de_commande = request.form.get('etat_de_commande')
-                reference = request.form.get('reference')
-                type_de_produit = request.form.get('type_de_produit')
+    try:
+        # Récupération des données du formulaire
+        style = request.form.get('style')
+        qty = request.form.get('qty')
+        date_reception_bon_commande = request.form.get('date_reception_bon_commande')
+        date_livraison_commande = request.form.get('date_livraison_commande')
+        position_id = request.form.get('position_id')
+        po = request.form.get('po')
+        coloris = request.form.get('coloris')
+        brand = request.form.get('brand')
+        type_de_commande = request.form.get('type_de_commande')
+        etat_de_commande = request.form.get('etat_de_commande')
+        reference = request.form.get('reference')
+        type_de_produit = request.form.get('type_de_produit')
 
-                image_file = request.files.get('image')
-                dossier_file = request.files.get('dossier_technique')
-                dossier_serigraphie_file = request.files.get('dossier_serigraphie')
-                bon_de_commande_file = request.files.get('bon_de_commande')
-                patronage_file = request.files.get('patronage')
+        # Récupération des fichiers téléchargés
+        upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+        os.makedirs(upload_folder, exist_ok=True)  # Création du dossier si inexistant
 
-                image_filename = None
-                if image_file and allowed_file(image_file.filename):
-                    image_filename = secure_filename(image_file.filename)
-                    image_path = os.path.join(current_app.config['UPLOAD_FOLDER'], image_filename)
-                    image_file.save(image_path)
+        image_filename = save_uploaded_file(request.files.get('image'), upload_folder)
+        dossier_filename = save_uploaded_file(request.files.get('dossier_technique'), upload_folder)
+        dossier_serigraphie_filename = save_uploaded_file(request.files.get('dossier_serigraphie'), upload_folder)
+        bon_de_commande_filename = save_uploaded_file(request.files.get('bon_de_commande'), upload_folder)
+        patronage_filename = save_uploaded_file(request.files.get('patronage'), upload_folder)
 
-                dossier_filename = None
-                if dossier_file and allowed_file(dossier_file.filename):
-                    dossier_filename = secure_filename(dossier_file.filename)
-                    dossier_path = os.path.join(current_app.config['UPLOAD_FOLDER'], dossier_filename)
-                    dossier_file.save(dossier_path)
+        # Conversion de qty en float si possible
+        qty = float(qty) if qty and qty.replace('.', '', 1).isdigit() else None
 
-                dossier_serigraphie_filename = None
-                if dossier_serigraphie_file and allowed_file(dossier_serigraphie_file.filename):
-                    dossier_serigraphie_filename = secure_filename(dossier_serigraphie_file.filename)
-                    dossier_serigraphie_path = os.path.join(current_app.config['UPLOAD_FOLDER'], dossier_serigraphie_filename)
-                    dossier_serigraphie_file.save(dossier_serigraphie_path)
+        # Création du produit
+        nouveau_produit = Produit(
+            style=style,
+            image=image_filename,
+            qty=qty,
+            dossier_technique=dossier_filename,
+            dossier_serigraphie=dossier_serigraphie_filename,
+            bon_de_commande=bon_de_commande_filename,
+            patronage=patronage_filename,
+            date_reception_bon_commande=date_reception_bon_commande,
+            date_livraison_commande=date_livraison_commande,
+            position_id=position_id,
+            po=po,
+            coloris=coloris,
+            brand=brand,
+            type_de_commande=type_de_commande,
+            etat_de_commande=etat_de_commande,
+            reference=reference,
+            type_de_produit=type_de_produit
+        )
 
-                bon_de_commande_filename = None
-                if bon_de_commande_file and allowed_file(bon_de_commande_file.filename):
-                    bon_de_commande_filename = secure_filename(bon_de_commande_file.filename)
-                    bon_de_commande_path = os.path.join(current_app.config['UPLOAD_FOLDER'], bon_de_commande_filename)
-                    bon_de_commande_file.save(bon_de_commande_path)
+        db.session.add(nouveau_produit)
+        db.session.commit()
 
-                patronage_filename = None
-                if patronage_file and allowed_file(patronage_file.filename):
-                    patronage_filename = secure_filename(patronage_file.filename)
-                    patronage_path = os.path.join(current_app.config['UPLOAD_FOLDER'], patronage_filename)
-                    patronage_file.save(patronage_path)
+        return jsonify({'message': 'Produit ajouté avec succès'}), 201
 
-                try:
-                    nouveau_produit = Produit(
-                        style=style,
-                        image=image_filename,
-                        qty=float(qty) if qty else None,
-                        dossier_technique=dossier_filename,
-                        dossier_serigraphie=dossier_serigraphie_filename,
-                        bon_de_commande=bon_de_commande_filename,
-                        patronage=patronage_filename,
-                        date_reception_bon_commande=date_reception_bon_commande,
-                        date_livraison_commande=date_livraison_commande,
-                        position_id=position_id,
-                        po=po,
-                        coloris=coloris,
-                        brand=brand,
-                        type_de_commande=type_de_commande,
-                        etat_de_commande=etat_de_commande,
-                        reference=reference,
-                        type_de_produit=type_de_produit
-                    )
-
-                    db.session.add(nouveau_produit)
-                    db.session.commit()
-                    return jsonify({'message': 'Produit ajouté avec succès'}), 201
-                except Exception as e:
-                    db.session.rollback()
-                    return jsonify({'message': f'Erreur lors de l\'ajout du produit : {str(e)}'}), 500
-
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Erreur lors de l\'ajout du produit : {str(e)}'}), 500
+        
 @main.route('/importer/produits-images', methods=['POST'])
 def import_produits_documents():
     excel_file = request.files.get('excel_file')
