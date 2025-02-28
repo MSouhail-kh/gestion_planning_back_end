@@ -307,7 +307,6 @@ def get_produits_by_position_id(produit_id):
 
         return jsonify(produits_list)
 
-
 def allowed_file(filename):
     """Check if the file extension is allowed."""
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx'}
@@ -317,20 +316,19 @@ def save_uploaded_file(file, upload_folder=None):
     """Save an uploaded file to the specified folder."""
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        folder = upload_folder if upload_folder else current_app.config.get('UPLOAD_FOLDER', 'uploads')
+        folder = upload_folder if upload_folder else os.path.join("static", "uploads")
         os.makedirs(folder, exist_ok=True)
         file_path = os.path.join(folder, filename)
         file.save(file_path)
         return filename
     return None
 
-@main.route('/assets/uploads/<filename>')
+@main.route('/static/uploads/<filename>')
 def serve_file(filename):
     """Serve uploaded files securely."""
-    safe_filename = secure_filename(filename)
-    upload_folder = os.path.abspath(current_app.config.get("UPLOAD_FOLDER", "uploads"))
-    return send_from_directory(upload_folder, safe_filename, as_attachment=True)
-
+    upload_folder = os.path.abspath(os.path.join("static", "uploads"))
+    return send_from_directory(upload_folder, filename)
+    
 @main.route('/ajouter/produits', methods=['POST'])
 def add_produit():
     """Add a new product to the database."""
