@@ -326,8 +326,9 @@ def save_uploaded_file(file, upload_folder=None):
 @main.route('/static/uploads/<filename>')
 def serve_file(filename):
     safe_filename = secure_filename(filename)
-    return send_from_directory(current_app.config.get("UPLOAD_FOLDER", "uploads"), safe_filename)
-
+    upload_folder = os.path.abspath(current_app.config.get("UPLOAD_FOLDER", "uploads"))
+    return send_from_directory(upload_folder, safe_filename, as_attachment=True)
+    
 @main.route('/ajouter/produits', methods=['POST'])
 def add_produit():
     try:
