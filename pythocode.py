@@ -312,18 +312,21 @@ def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def save_uploaded_file(file):
+def save_uploaded_file(file, upload_folder=None):
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+        folder = upload_folder if upload_folder else current_app.config.get('UPLOAD_FOLDER', 'uploads')
+        os.makedirs(folder, exist_ok=True)
+        file_path = os.path.join(folder, filename)
         file.save(file_path)
         return filename
     return None
 
+
 @main.route('/static/uploads/<filename>')
 def serve_file(filename):
     safe_filename = secure_filename(filename)
-    return send_from_directory(current_app.config["UPLOAD_FOLDER"], safe_filename)
+    return send_from_directory(current_app.config.get("UPLOAD_FOLDER", "uploads"), safe_filename)
 
 @main.route('/ajouter/produits', methods=['POST'])
 def add_produit():
@@ -345,12 +348,17 @@ def add_produit():
         # Récupération des fichiers téléchargés
         upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
         os.makedirs(upload_folder, exist_ok=True)  # Création du dossier si inexistant
+        
+        def get_uploaded_file(field_name):
+            file = request.files.get(field_name)
+            return save_uploaded_file(file, upload_folder) if file else None
 
-        image_filename = save_uploaded_file(request.files.get('image'), upload_folder)
-        dossier_filename = save_uploaded_file(request.files.get('dossier_technique'), upload_folder)
-        dossier_serigraphie_filename = save_uploaded_file(request.files.get('dossier_serigraphie'), upload_folder)
-        bon_de_commande_filename = save_uploaded_file(request.files.get('bon_de_commande'), upload_folder)
-        patronage_filename = save_uploaded_file(request.files.get('patronage'), upload_folder)
+        image_filename = get_uploaded_file('image')
+        dossier_filename = get_uploaded_file('dossier_technique')
+        dossier_serigraphie_filename = get_uploaded_file('dossier_serigraphie')
+        bon_de_commande_filename = get_uploaded_file('bon_de_commande')
+        patronage_filename = get_uploaded_file('patronage')
+
 
         # Conversion de qty en float si possible
         qty = float(qty) if qty and qty.replace('.', '', 1).isdigit() else None
