@@ -309,7 +309,7 @@ def get_produits_by_position_id(produit_id):
 
 UPLOAD_FOLDER = os.path.abspath(os.path.join(os.getcwd(), "assets"))
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-@main.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+@main.config["UPLOAD_FOLDER"] == UPLOAD_FOLDER
 
 def allowed_file(filename):
     """Check if the file extension is allowed."""
