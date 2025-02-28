@@ -150,7 +150,7 @@ def get_user(current_user_email):
 
 @main.route('/produits', methods=['GET'])
 def get_produits():
-        BASE_URL = "https://gestion-planning-git-gestion-planning-msouhail-khs-projects.vercel.app/"
+        BASE_URL = "https://gestion-planning-git-gestion-planning-msouhail-khs-projects.vercel.app"
         produits = Produit.query.all()
         produits_dict = {
             produit.id: {
@@ -309,22 +309,19 @@ def get_produits_by_position_id(produit_id):
 
 
 def allowed_file(filename):
-    """ Vérifie si le fichier a une extension autorisée. """
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def save_uploaded_file(file, upload_folder):
-    """ Enregistre un fichier téléchargé et retourne son nom sécurisé. """
+def save_uploaded_file(file):
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        file_path = os.path.join(upload_folder, filename)
+        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
         return filename
     return None
 
 @main.route('/static/uploads/<filename>')
 def serve_file(filename):
-    """ Sert un fichier statique depuis le dossier d'uploads. """
     safe_filename = secure_filename(filename)
     return send_from_directory(current_app.config["UPLOAD_FOLDER"], safe_filename)
 
