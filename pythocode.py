@@ -23,7 +23,6 @@ def send_reset_email(email, reset_link):
 main = Blueprint('main', __name__)
 CORS(main, supports_credentials=True)
 
-os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
@@ -308,17 +307,16 @@ def get_produits_by_position_id(produit_id):
 
         return jsonify(produits_list)
 
-
-
+os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
 def allowed_file(filename):
     """Check if the file extension is allowed."""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
 def save_uploaded_file(file, upload_folder=None):
     """Save an uploaded file to the specified folder."""
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        folder = upload_folder if upload_folder else app.config['UPLOAD_FOLDER']
+        folder = upload_folder if upload_folder else current_app.config['UPLOAD_FOLDER']
         os.makedirs(folder, exist_ok=True)
         file_path = os.path.join(folder, filename)
         file.save(file_path)
@@ -328,7 +326,7 @@ def save_uploaded_file(file, upload_folder=None):
 @main.route('/assets/<filename>')
 def serve_file(filename):
     """Serve uploaded files."""
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
 
 @main.route('/ajouter/produits', methods=['POST'])
 def add_produit():
