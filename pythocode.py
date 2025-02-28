@@ -147,35 +147,35 @@ def get_user(current_user_email):
     response = jsonify(user_data)
     response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response, 200
-
+    
 @main.route('/produits', methods=['GET'])
 def get_produits():
-        BASE_URL = "https://gestion-planning-git-gestion-planning-msouhail-khs-projects.vercel.app"
-        produits = Produit.query.all()
-        produits_dict = {
-            produit.id: {
-                'id': produit.id,
-                'style': produit.style,  
-                'image': f"{BASE_URL}/assets/uploads/{produit.image}" if produit.image else None,
-                'qty': produit.qty,
-                'dossier_technique': f"{BASE_URL}/assets/uploads/{produit.dossier_technique}" if produit.dossier_technique else None,
-                'dossier_serigraphie': f"{BASE_URL}/assets/uploads/{produit.dossier_serigraphie}" if produit.dossier_serigraphie else None,
-                'bon_de_commande': f"{BASE_URL}/assets/uploads/{produit.bon_de_commande}" if produit.bon_de_commande else None,
-                'patronage': f"{BASE_URL}/assets/uploads/{produit.patronage}" if produit.patronage else None,
-                'date_reception_bon_commande': produit.date_reception_bon_commande,
-                'date_livraison_commande': produit.date_livraison_commande,
-                'position_id': produit.position_id,
-                'po': produit.po,
-                'coloris': produit.coloris,
-                'brand': produit.brand,
-                'type_de_commande': produit.type_de_commande,
-                'etat_de_commande': produit.etat_de_commande,
-                'reference': produit.reference,
-                'type_de_produit': produit.type_de_produit
-            }
-            for produit in produits
+    BASE_URL = "https://gestion-planning-git-gestion-planning-msouhail-khs-projects.vercel.app"
+    produits = Produit.query.all()
+    produits_dict = {
+        produit.id: {
+            'id': produit.id,
+            'style': produit.style,
+            'image': f"{BASE_URL}/static/uploads/{produit.image}" if produit.image else None,
+            'qty': produit.qty,
+            'dossier_technique': f"{BASE_URL}/static/uploads/{produit.dossier_technique}" if produit.dossier_technique else None,
+            'dossier_serigraphie': f"{BASE_URL}/static/uploads/{produit.dossier_serigraphie}" if produit.dossier_serigraphie else None,
+            'bon_de_commande': f"{BASE_URL}/static/uploads/{produit.bon_de_commande}" if produit.bon_de_commande else None,
+            'patronage': f"{BASE_URL}/static/uploads/{produit.patronage}" if produit.patronage else None,
+            'date_reception_bon_commande': produit.date_reception_bon_commande,
+            'date_livraison_commande': produit.date_livraison_commande,
+            'position_id': produit.position_id,
+            'po': produit.po,
+            'coloris': produit.coloris,
+            'brand': produit.brand,
+            'type_de_commande': produit.type_de_commande,
+            'etat_de_commande': produit.etat_de_commande,
+            'reference': produit.reference,
+            'type_de_produit': produit.type_de_produit
         }
-        return jsonify(produits_dict)
+        for produit in produits
+    }
+    return jsonify(produits_dict)
 
 @main.route('/produits/<int:produit_id>', methods=['GET'])
 def get_produit_by_id(produit_id):
