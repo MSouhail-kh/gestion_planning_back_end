@@ -309,10 +309,12 @@ def get_produits_by_position_id(produit_id):
 
 
 def allowed_file(filename):
+    """Check if the file extension is allowed."""
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def save_uploaded_file(file, upload_folder=None):
+    """Save an uploaded file to the specified folder."""
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         folder = upload_folder if upload_folder else current_app.config.get('UPLOAD_FOLDER', 'uploads')
@@ -322,17 +324,24 @@ def save_uploaded_file(file, upload_folder=None):
         return filename
     return None
 
-
 @main.route('/static/uploads/<filename>')
 def serve_file(filename):
+    """Serve uploaded files securely."""
     safe_filename = secure_filename(filename)
     upload_folder = os.path.abspath(current_app.config.get("UPLOAD_FOLDER", "uploads"))
     return send_from_directory(upload_folder, safe_filename, as_attachment=True)
-    
+
 @main.route('/ajouter/produits', methods=['POST'])
 def add_produit():
+    """Add a new product to the database."""
     try:
-        # Récupération des données du formulaire
+        # Validate required fields
+        required_fields = ['style', 'qty', 'position_id', 'po', 'coloris', 'brand', 'type_de_commande', 'etat_de_commande', 'reference', 'type_de_produit']
+        for field in required_fields:
+            if not request.form.get(field):
+                return jsonify({'message': f'Le champ {field} est requis'}), 400
+
+        # Parse form data
         style = request.form.get('style')
         qty = request.form.get('qty')
         date_reception_bon_commande = request.form.get('date_reception_bon_commande')
@@ -346,10 +355,16 @@ def add_produit():
         reference = request.form.get('reference')
         type_de_produit = request.form.get('type_de_produit')
 
-        # Récupération des fichiers téléchargés
+        # Convert qty to float
+        try:
+            qty = float(qty) if qty else None
+        except ValueError:
+            return jsonify({'message': 'La quantité doit être un nombre valide'}), 400
+
+        # Handle file uploads
         upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-        os.makedirs(upload_folder, exist_ok=True)  # Création du dossier si inexistant
-        
+        os.makedirs(upload_folder, exist_ok=True)
+
         def get_uploaded_file(field_name):
             file = request.files.get(field_name)
             return save_uploaded_file(file, upload_folder) if file else None
@@ -360,11 +375,7 @@ def add_produit():
         bon_de_commande_filename = get_uploaded_file('bon_de_commande')
         patronage_filename = get_uploaded_file('patronage')
 
-
-        # Conversion de qty en float si possible
-        qty = float(qty) if qty and qty.replace('.', '', 1).isdigit() else None
-
-        # Création du produit
+        # Create new product
         nouveau_produit = Produit(
             style=style,
             image=image_filename,
@@ -385,6 +396,7 @@ def add_produit():
             type_de_produit=type_de_produit
         )
 
+        # Save to database
         db.session.add(nouveau_produit)
         db.session.commit()
 
@@ -543,7 +555,6 @@ def import_produits_documents():
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Erreur d'importation: {str(e)}")
         return jsonify({'message': f'Erreur serveur: {str(e)}'}), 500
 
 @main.route('/supprimer/produits/<int:id>', methods=['DELETE'])
