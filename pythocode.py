@@ -12,6 +12,9 @@ import uuid
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
+from PIL import Image
+import io
+import fitz  
 
 cloudinary.config(
     cloud_name="dvkvd53jv",
@@ -240,6 +243,21 @@ def get_produits_by_position_id(produit_id):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
+def compress_image(file, quality=85):
+    img = Image.open(file)
+    img = img.convert('RGB')  
+    output = io.BytesIO()
+    img.save(output, format='JPEG', quality=quality)
+    output.seek(0)
+    return output
+
+def compress_pdf(file):
+    pdf_document = fitz.open(stream=file.read(), filetype="pdf")
+    output = io.BytesIO()
+    pdf_document.save(output, deflate=True) 
+    output.seek(0)
+    return output
+
 def upload_to_cloudinary(file, is_raw=False):
     if file:
         options = {"resource_type": "raw"} if is_raw else {}
@@ -269,11 +287,33 @@ def add_produit():
             return jsonify({'message': 'La quantité doit être un nombre valide'}), 400
 
         def get_uploaded_file(field_name, allowed_extensions=None, is_raw=False):
+            """Récupère et vérifie un fichier téléversé."""
             file = request.files.get(field_name)
             if file:
+                file.seek(0, 2)  
+                file_size = file.tell()
+                file.seek(0) 
+
+                max_size = current_app.config['MAX_FILE_SIZE']  
+
+                if file_size > max_size:
+                    raise ValueError(f"La taille du fichier {field_name} dépasse la limite de {max_size // (1024 * 1024)} Mo.")
+
                 ext = file.filename.rsplit('.', 1)[-1].lower()
                 if allowed_extensions and ext not in allowed_extensions:
-                    return None  
+                    return None
+
+                if ext in ['jpg', 'jpeg', 'png']:
+                    compressed_file = compress_image(file)
+                    return upload_to_cloudinary(compressed_file, is_raw=is_raw)
+
+                if ext == 'pdf':
+                    compressed_file = compress_pdf(file)
+                    return upload_to_cloudinary(compressed_file, is_raw=is_raw)
+
+                if ext in ['zip', 'rar']:
+                    return upload_to_cloudinary(file, is_raw=is_raw)
+
                 return upload_to_cloudinary(file, is_raw=is_raw)
             return None
 
@@ -308,6 +348,8 @@ def add_produit():
 
         return jsonify({'message': 'Produit ajouté avec succès', 'produit': nouveau_produit.id}), 201
 
+    except ValueError as e:
+        return jsonify({'message': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Erreur lors de l\'ajout du produit : {str(e)}'}), 500
@@ -347,19 +389,30 @@ def update_produit(produit_id):
         if field_name in request.files:
             file = request.files[field_name]
             if file and allowed_file(file.filename):
+                # Vérifier la taille du fichier
+                file.seek(0, 2)  # Aller à la fin du fichier pour obtenir sa taille
+                file_size = file.tell()
+                file.seek(0)  # Réinitialiser le curseur
+
+                if file_size > current_app.config['MAX_FILE_SIZE']:
+                    raise ValueError(f"La taille du fichier {field_name} dépasse la limite de {current_app.config['MAX_FILE_SIZE'] // (1024 * 1024)} Mo.")
+
                 file_url = upload_to_cloudinary(file)
                 return file_url
         return None
 
-    produit.image = process_file('image') or produit.image
-    produit.dossier_technique = process_file('dossier_technique') or produit.dossier_technique
-    produit.dossier_serigraphie = process_file('dossier_serigraphie') or produit.dossier_serigraphie
-    produit.bon_de_commande = process_file('bon_de_commande') or produit.bon_de_commande
-    produit.patronage = process_file('patronage') or produit.patronage
-
     try:
+        produit.image = process_file('image') or produit.image
+        produit.dossier_technique = process_file('dossier_technique') or produit.dossier_technique
+        produit.dossier_serigraphie = process_file('dossier_serigraphie') or produit.dossier_serigraphie
+        produit.bon_de_commande = process_file('bon_de_commande') or produit.bon_de_commande
+        produit.patronage = process_file('patronage') or produit.patronage
+
         db.session.commit()
         return jsonify({'message': 'Produit mis à jour avec succès', 'produit_id': produit.id}), 200
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Erreur lors de la mise à jour du produit : {str(e)}'}), 500
@@ -472,6 +525,14 @@ def import_produits_documents():
                             errors.append(f'Produit {product_id} introuvable')
                             continue
 
+                    file.seek(0, 2)  
+                    file_size = file.tell()
+                    file.seek(0)  
+
+                    if file_size > current_app.config['MAX_FILE_SIZE']:
+                        errors.append(f'La taille du fichier {key} dépasse la limite de {current_app.config["MAX_FILE_SIZE"] // (1024 * 1024)} Mo.')
+                        continue
+
                     if allowed_file(file.filename, allowed_extensions):
                         file_url = upload_to_cloudinary(file)
                         if file_url:
@@ -494,7 +555,6 @@ def import_produits_documents():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Erreur serveur: {str(e)}'}), 500
-
 
 @main.route('/supprimer/produits/<int:id>', methods=['DELETE'])
 def delete_produit(id):
