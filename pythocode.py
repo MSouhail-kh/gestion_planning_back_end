@@ -34,8 +34,6 @@ def send_reset_email(email, reset_link):
 main = Blueprint('main', __name__)
 CORS(main, supports_credentials=True)
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
 @main.record_once
 def on_load(state):
@@ -240,12 +238,13 @@ def get_produits_by_position_id(produit_id):
     return jsonify(produits_list)
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'pdf', 'xls', 'xlsx'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
-def upload_to_cloudinary(file):
-    if file and allowed_file(file.filename):
-        upload_result = cloudinary.uploader.upload(file)
-        return upload_result.get("secure_url")  
+def upload_to_cloudinary(file, is_raw=False):
+    if file:
+        options = {"resource_type": "raw"} if is_raw else {}
+        upload_result = cloudinary.uploader.upload(file, **options)
+        return upload_result.get("secure_url")
     return None
 
 @main.route('/ajouter/produits', methods=['POST'])
@@ -269,15 +268,20 @@ def add_produit():
         except ValueError:
             return jsonify({'message': 'La quantité doit être un nombre valide'}), 400
 
-        def get_uploaded_file(field_name):
+        def get_uploaded_file(field_name, allowed_extensions=None, is_raw=False):
             file = request.files.get(field_name)
-            return upload_to_cloudinary(file) if file else None
+            if file:
+                ext = file.filename.rsplit('.', 1)[-1].lower()
+                if allowed_extensions and ext not in allowed_extensions:
+                    return None  
+                return upload_to_cloudinary(file, is_raw=is_raw)
+            return None
 
-        image_url = get_uploaded_file('image')
-        dossier_url = get_uploaded_file('dossier_technique')
-        dossier_serigraphie_url = get_uploaded_file('dossier_serigraphie')
-        bon_de_commande_url = get_uploaded_file('bon_de_commande')
-        patronage_url = get_uploaded_file('patronage')
+        image_url = get_uploaded_file('image', allowed_extensions=['jpg', 'jpeg', 'png'])
+        dossier_url = get_uploaded_file('dossier_technique', allowed_extensions=['pdf'], is_raw=True)
+        dossier_serigraphie_url = get_uploaded_file('dossier_serigraphie', allowed_extensions=['pdf', 'rar', 'zip'], is_raw=True)
+        bon_de_commande_url = get_uploaded_file('bon_de_commande', allowed_extensions=['pdf'], is_raw=True)
+        patronage_url = get_uploaded_file('patronage', allowed_extensions=['pdf', 'rar', 'zip'], is_raw=True)
 
         nouveau_produit = Produit(
             style=style,
@@ -307,7 +311,6 @@ def add_produit():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Erreur lors de l\'ajout du produit : {str(e)}'}), 500
-
 
 @main.route('/update/produits/<int:produit_id>', methods=['PUT'])
 def update_produit(produit_id):
@@ -340,35 +343,19 @@ def update_produit(produit_id):
     if 'type_de_produit' in request.form:
         produit.type_de_produit = request.form.get('type_de_produit')
 
-    if 'image' in request.files:
-        image_file = request.files.get('image')
-        image_url = upload_to_cloudinary(image_file)
-        if image_url:
-            produit.image = image_url
+    def process_file(field_name):
+        if field_name in request.files:
+            file = request.files[field_name]
+            if file and allowed_file(file.filename):
+                file_url = upload_to_cloudinary(file)
+                return file_url
+        return None
 
-    if 'dossier_technique' in request.files:
-        dossier_file = request.files.get('dossier_technique')
-        dossier_url = upload_to_cloudinary(dossier_file)
-        if dossier_url:
-            produit.dossier_technique = dossier_url
-
-    if 'dossier_serigraphie' in request.files:
-        dossier_serigraphie_file = request.files.get('dossier_serigraphie')
-        dossier_serigraphie_url = upload_to_cloudinary(dossier_serigraphie_file)
-        if dossier_serigraphie_url:
-            produit.dossier_serigraphie = dossier_serigraphie_url
-
-    if 'bon_de_commande' in request.files:
-        bon_de_commande_file = request.files.get('bon_de_commande')
-        bon_de_commande_url = upload_to_cloudinary(bon_de_commande_file)
-        if bon_de_commande_url:
-            produit.bon_de_commande = bon_de_commande_url
-
-    if 'patronage' in request.files:
-        patronage_file = request.files.get('patronage')
-        patronage_url = upload_to_cloudinary(patronage_file)
-        if patronage_url:
-            produit.patronage = patronage_url
+    produit.image = process_file('image') or produit.image
+    produit.dossier_technique = process_file('dossier_technique') or produit.dossier_technique
+    produit.dossier_serigraphie = process_file('dossier_serigraphie') or produit.dossier_serigraphie
+    produit.bon_de_commande = process_file('bon_de_commande') or produit.bon_de_commande
+    produit.patronage = process_file('patronage') or produit.patronage
 
     try:
         db.session.commit()
@@ -469,7 +456,7 @@ def import_produits_documents():
         if errors:
             return jsonify({'errors': errors}), 400
 
-        def process_uploaded_files(file_type, product_relation=True):
+        def process_uploaded_files(file_type, allowed_extensions, product_relation=True):
             for key in request.files:
                 if key.startswith(file_type):
                     file = request.files[key]
@@ -485,18 +472,18 @@ def import_produits_documents():
                             errors.append(f'Produit {product_id} introuvable')
                             continue
 
-                    if allowed_file(file.filename):
+                    if allowed_file(file.filename, allowed_extensions):
                         file_url = upload_to_cloudinary(file)
                         if file_url:
                             setattr(produit, file_type, file_url)
                     else:
                         errors.append(f'Format de fichier interdit pour {key}')
 
-        process_uploaded_files('image')
-        process_uploaded_files('dossier_technique')
-        process_uploaded_files('dossier_serigraphie')
-        process_uploaded_files('bon_de_commande')
-        process_uploaded_files('patronage')
+        process_uploaded_files('image', {'jpg', 'jpeg', 'png', 'gif'})
+        process_uploaded_files('dossier_technique', {'pdf', 'zip', 'rar'})
+        process_uploaded_files('dossier_serigraphie', {'pdf', 'zip', 'rar'})
+        process_uploaded_files('bon_de_commande', {'pdf', 'zip', 'rar'})
+        process_uploaded_files('patronage', {'pdf', 'zip', 'rar'})
 
         if errors:
             return jsonify({'errors': errors}), 400
@@ -507,6 +494,7 @@ def import_produits_documents():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Erreur serveur: {str(e)}'}), 500
+
 
 @main.route('/supprimer/produits/<int:id>', methods=['DELETE'])
 def delete_produit(id):
