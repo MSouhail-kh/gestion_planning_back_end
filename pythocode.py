@@ -1,4 +1,3 @@
-import requests
 from flask_mail import Mail, Message
 from flask_cors import CORS ,cross_origin
 import jwt
@@ -7,11 +6,22 @@ from flask import Blueprint, jsonify, request, current_app, send_from_directory 
 from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 import pandas as pd
+import os
 from models import db, Produit,User
-import requests
+import uuid
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 from PIL import Image
 import io
 import fitz  
+
+cloudinary.config(
+    cloud_name="dvkvd53jv",
+    api_key="922647359895329",
+    api_secret="1lzitPdXC6lTULqz5e4ttEMABPQ",
+    secure=True
+)
 
 mail = Mail()
 
@@ -26,6 +36,7 @@ def send_reset_email(email, reset_link):
 
 main = Blueprint('main', __name__)
 CORS(main, supports_credentials=True)
+
 
 @main.record_once
 def on_load(state):
@@ -149,6 +160,7 @@ def get_user(current_user_email):
     response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response, 200
     
+
 @main.route('/produits', methods=['GET'])
 def get_produits():
     produits = Produit.query.all()
@@ -228,6 +240,7 @@ def get_produits_by_position_id(produit_id):
 
     return jsonify(produits_list)
 
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
@@ -246,67 +259,11 @@ def compress_pdf(file):
     output.seek(0)
     return output
 
-def upload_to_gofile(file):
-    if not file:
-        return None
-
-    server_response = requests.get(f"{current_app.config['GOFILE_API_URL']}/getServer")
-    if server_response.status_code != 200:
-        raise Exception("Impossible de récupérer le serveur Gofile")
-    
-    server = server_response.json()["data"]["server"]
-
-    upload_url = f"https://{server}.gofile.io/uploadFile"
-    files = {'file': file}
-    upload_response = requests.post(upload_url, files=files)
-
-    if upload_response.status_code != 200:
-        raise Exception("Erreur lors du téléversement du fichier sur Gofile")
-
-    file_id = upload_response.json()["data"]["fileId"]
-    account_token = current_app.config['GOFILE_ACCOUNT_TOKEN']
-    associate_response = requests.put(
-        f"{current_app.config['GOFILE_API_URL']}/setOption",
-        data={
-            "fileId": file_id,
-            "option": "accountToken",
-            "value": account_token
-        }
-    )
-
-    if associate_response.status_code != 200:
-        raise Exception("Erreur lors de l'association du fichier à votre compte Gofile")
-
-    return upload_response.json()["data"]["downloadPage"]
-
-def get_uploaded_file(field_name, allowed_extensions=None, is_raw=False):
-    file = request.files.get(field_name)
+def upload_to_cloudinary(file, is_raw=False):
     if file:
-        file.seek(0, 2)  
-        file_size = file.tell()
-        file.seek(0) 
-
-        max_size = current_app.config['MAX_FILE_SIZE']  
-
-        if file_size > max_size:
-            raise ValueError(f"La taille du fichier {field_name} dépasse la limite de {max_size // (1024 * 1024)} Mo.")
-
-        ext = file.filename.rsplit('.', 1)[-1].lower()
-        if allowed_extensions and ext not in allowed_extensions:
-            return None
-
-        if ext in ['jpg', 'jpeg', 'png']:
-            compressed_file = compress_image(file)
-            return upload_to_gofile(compressed_file)
-
-        if ext == 'pdf':
-            compressed_file = compress_pdf(file)
-            return upload_to_gofile(compressed_file)
-
-        if ext in ['zip', 'rar']:
-            return upload_to_gofile(file)
-
-        return upload_to_gofile(file)
+        options = {"resource_type": "raw"} if is_raw else {}
+        upload_result = cloudinary.uploader.upload(file, **options)
+        return upload_result.get("secure_url")
     return None
 
 @main.route('/ajouter/produits', methods=['POST'])
@@ -329,6 +286,37 @@ def add_produit():
             qty = float(qty) if qty else None
         except ValueError:
             return jsonify({'message': 'La quantité doit être un nombre valide'}), 400
+
+        def get_uploaded_file(field_name, allowed_extensions=None, is_raw=False):
+            """Récupère et vérifie un fichier téléversé."""
+            file = request.files.get(field_name)
+            if file:
+                file.seek(0, 2)  
+                file_size = file.tell()
+                file.seek(0) 
+
+                max_size = current_app.config['MAX_FILE_SIZE']  
+
+                if file_size > max_size:
+                    raise ValueError(f"La taille du fichier {field_name} dépasse la limite de {max_size // (1024 * 1024)} Mo.")
+
+                ext = file.filename.rsplit('.', 1)[-1].lower()
+                if allowed_extensions and ext not in allowed_extensions:
+                    return None
+
+                if ext in ['jpg', 'jpeg', 'png']:
+                    compressed_file = compress_image(file)
+                    return upload_to_cloudinary(compressed_file, is_raw=is_raw)
+
+                if ext == 'pdf':
+                    compressed_file = compress_pdf(file)
+                    return upload_to_cloudinary(compressed_file, is_raw=is_raw)
+
+                if ext in ['zip', 'rar']:
+                    return upload_to_cloudinary(file, is_raw=is_raw)
+
+                return upload_to_cloudinary(file, is_raw=is_raw)
+            return None
 
         image_url = get_uploaded_file('image', allowed_extensions=['jpg', 'jpeg', 'png'])
         dossier_url = get_uploaded_file('dossier_technique', allowed_extensions=['pdf'], is_raw=True)
@@ -355,7 +343,7 @@ def add_produit():
             reference=reference,
             type_de_produit=type_de_produit
         )
-
+        print(nouveau_produit)
         db.session.add(nouveau_produit)
         db.session.commit()
 
@@ -366,7 +354,8 @@ def add_produit():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Erreur lors de l\'ajout du produit : {str(e)}'}), 500
-    
+
+
 @main.route('/update/produits/<int:produit_id>', methods=['PUT'])
 def update_produit(produit_id):
     produit = Produit.query.get(produit_id)
@@ -402,27 +391,17 @@ def update_produit(produit_id):
         if field_name in request.files:
             file = request.files[field_name]
             if file and allowed_file(file.filename):
-                file.seek(0, 2)
+                # Vérifier la taille du fichier
+                file.seek(0, 2)  # Aller à la fin du fichier pour obtenir sa taille
                 file_size = file.tell()
-                file.seek(0)
+                file.seek(0)  # Réinitialiser le curseur
 
                 if file_size > current_app.config['MAX_FILE_SIZE']:
-                    raise ValueError(f"Taille du fichier {field_name} trop grande")
+                    raise ValueError(f"La taille du fichier {field_name} dépasse la limite de {current_app.config['MAX_FILE_SIZE'] // (1024 * 1024)} Mo.")
 
-                ext = file.filename.rsplit('.', 1)[-1].lower()
-                
-                if ext in ['jpg', 'jpeg', 'png']:
-                    compressed_file = compress_image(file)
-                    file_url = upload_to_gofile(compressed_file)
-                elif ext == 'pdf':
-                    compressed_file = compress_pdf(file)
-                    file_url = upload_to_gofile(compressed_file)
-                else:
-                    file_url = upload_to_gofile(file)
-
+                file_url = upload_to_cloudinary(file)
                 return file_url
         return None
-
 
     try:
         produit.image = process_file('image') or produit.image
@@ -532,43 +511,30 @@ def import_produits_documents():
         if errors:
             return jsonify({'errors': errors}), 400
 
-        def process_uploaded_files(file_type, allowed_extensions):
+        def process_uploaded_files(file_type, allowed_extensions, product_relation=True):
             for key in request.files:
                 if key.startswith(file_type):
                     file = request.files[key]
-                    
-                    try:
-                        product_id = int(key.split('_')[-1])
+                    if product_relation:
+                        try:
+                            product_id = int(key.split('_')[-1])
+                        except:
+                            errors.append(f'Format de clé invalide: {key}')
+                            continue
+                        
                         produit = Produit.query.get(product_id)
                         if not produit:
                             errors.append(f'Produit {product_id} introuvable')
                             continue
-                    except:
-                        errors.append(f'Format de clé invalide: {key}')
-                        continue
 
-                    ext = file.filename.rsplit('.', 1)[-1].lower()
-                    if ext not in allowed_extensions:
-                        errors.append(f'Format interdit pour {key}')
-                        continue
+                    if allowed_file(file.filename, allowed_extensions):
+                        file_url = upload_to_cloudinary(file)
+                        if file_url:
+                            setattr(produit, file_type, file_url)
+                    else:
+                        errors.append(f'Format de fichier interdit pour {key}')
 
-                    try:
-                        file.seek(0)
-                        
-                        if ext in ['jpg', 'jpeg', 'png']:
-                            compressed = compress_image(file)
-                            file_url = upload_to_gofile(compressed)
-                        elif ext == 'pdf':
-                            compressed = compress_pdf(file)
-                            file_url = upload_to_gofile(compressed)
-                        else:
-                            file_url = upload_to_gofile(file)
-
-                        setattr(produit, file_type, file_url)
-                    except Exception as e:
-                        errors.append(f'Erreur avec {key}: {str(e)}')
-
-        process_uploaded_files('image', {'jpg', 'jpeg', 'png'})
+        process_uploaded_files('image', {'jpg', 'jpeg', 'png', 'gif'})
         process_uploaded_files('dossier_technique', {'pdf', 'zip', 'rar'})
         process_uploaded_files('dossier_serigraphie', {'pdf', 'zip', 'rar'})
         process_uploaded_files('bon_de_commande', {'pdf', 'zip', 'rar'})
@@ -583,6 +549,7 @@ def import_produits_documents():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Erreur serveur: {str(e)}'}), 500
+
 
 @main.route('/supprimer/produits/<int:id>', methods=['DELETE'])
 def delete_produit(id):
