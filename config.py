@@ -8,9 +8,9 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     cloudinary.config(
-        cloud_name="dch1zqeid",
-        api_key="832779739236957",
-        api_secret="1lEut03YPYDu8BFtLQ1Q-olNm1Q",
+        cloud_name="dvkvd53jv",
+        api_key="922647359895329",
+        api_secret="1lzitPdXC6lTULqz5e4ttEMABPQ",
         secure=True
     )
     
@@ -19,3 +19,5 @@ class Config:
     
     SECRET_KEY = "https://jwt.io/#debugger-io?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.cThIIoDvwdueQB468K5xDc5633seEFoqwxjF_xSJyQQ"
     FLASK_DEBUG = True
+
+
